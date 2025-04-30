@@ -1,60 +1,118 @@
-# xComm
+# xComm – 탈중앙 P2P 
 
-Rust로 개발된 이 프로젝트는 libp2p를 기반으로 한 모듈형 분산 네트워크 스택입니다.  
-아래는 본 구현체가 제공하는 주요 기능과 각 기능의 역할 및 중요성입니다.
+**xComm** 은 **Rust + libp2p** 기반의 완전 P2P 애플리케이션입니다.  
+최소 2 대의 **Seed 노드**(Kademlia DHT 서버 + Relay v2 HOP)만 24H 가동하면  
+모든 사용자는 **“앱을 켜자마자 곧바로 전원 채팅방”** 에 입장할 수 있습니다.
 
----
-
-## 주요 기능 요약
-
-### 1. Peer ID 생성 및 관리
-- 각 노드는 공개키 기반의 고유 Peer ID를 생성하여 네트워크에서 자신을 식별합니다.
-- Peer ID는 IP처럼 쉽게 바뀌지 않으므로, 장기적으로 신원을 추적할 수 있습니다.
-- DHT, PubSub 등에서 노드 식별 및 메시지 대상 지정에 사용됩니다.
-
-### 2. 피어 탐색 및 라우팅
-- Kademlia DHT, mDNS, PEX(Peer Exchange) 등 다양한 메커니즘으로 네트워크 내 피어를 동적으로 탐색하고 연결합니다.
-- DHT를 통해 피어의 위치를 효율적으로 조회하고, 라우팅 프로토콜로 데이터 전송 경로를 최적화합니다.
-
-### 3. NAT 트래버설
-- UPnP, NAT-PMP, STUN, TURN, Circuit Relay, DCUtR 등 다양한 기법으로 NAT/방화벽 뒤의 피어와 통신합니다.
-- STUN으로 외부 IP/포트를 확인하고, Circuit Relay로 중계 노드를 통한 간접 통신이 가능합니다.
-
-### 4. Transport 계층 추상화
-- TCP, WebSocket, QUIC 등 다양한 전송 방식을 하나의 인터페이스로 추상화하여 환경(브라우저, 모바일, 서버 등)에 상관없이 이식성이 높습니다.
-
-### 5. 보안 연결 (Noise 프로토콜)
-- Noise 프로토콜을 사용해 노드 간 암호화된 연결을 설정하고, 상대방의 공개키를 검증하여 데이터 전송을 안전하게 보호합니다.
-- 중간자 공격(MITM) 방지 및 인증되지 않은 노드 차단이 가능합니다.
-
-### 6. Multiplexing (Yamux, Mplex 등)
-- 한 연결 위에 여러 가상 스트림을 동시에 열어, 연결 하나로 여러 프로토콜/메시지를 병렬로 처리할 수 있습니다.
-- 연결 수를 최소화하면서 다양한 작업을 동시에 수행할 수 있어 효율적입니다.
-
-### 7. 연결 유지 및 자동 재연결
-- 연결 끊김을 감지하고 자동으로 재연결을 시도하거나, 연결 풀을 유지합니다.
-- Swarm 내부에서 자동으로 관리되어, 분산 네트워크의 불안정성에 강합니다.
-
-### 8. ping 프로토콜로 연결 확인
-- 기본 제공되는 ping 프로토콜로 상대 노드의 응답 유무와 네트워크 지연 시간을 확인할 수 있습니다.
-- 네트워크의 안정성과 토폴로지 관리를 위한 기초 기능입니다.
-
-### 9. Custom 프로토콜 정의 및 교신
-- 사용자가 직접 프로토콜(예: `/myapp/1.0.0`)을 정의해 메시지를 송수신할 수 있습니다.
-- 게임, 채팅, 블록체인 등 다양한 응용에 맞는 P2P 메시징 로직을 유연하게 구현할 수 있습니다.
-
-### 10. PubSub (Gossipsub, Floodsub)
-- 토픽 기반의 브로드캐스트 메시지 시스템을 제공합니다.
-- subscribe("topic") 이후 해당 토픽에 대한 메시지를 계속 받을 수 있어, 블록체인/채팅 등에서 빠른 메시지 전파가 가능합니다.
-
-### 11. Kademlia DHT (Distributed Hash Table)
-- 분산 노드에서 키-값 형태의 데이터를 저장하거나 찾을 수 있는 메커니즘을 제공합니다.
-- 중앙 서버 없이 피어를 탐색하거나 데이터를 찾을 수 있어 탈중앙화된 검색이 가능합니다.
-
-### 12. 네트워크 이벤트 스트림 제공
-- Swarm은 노드 간 연결, 프로토콜 협상, 연결 해제, 데이터 수신 등의 이벤트를 poll 방식으로 제공합니다.
-- 이벤트 기반으로 네트워크 로직을 비동기적으로 처리할 수 있어, Rust의 async 생태계와 잘 맞습니다.
+> **지원 규모**: 동시 ≈ 100 명 | **필요 서버**: Seed 2–3 대(512 MiB VM면 충분)
 
 ---
 
-**이 프로젝트는 Rust와 libp2p의 강점을 살려, 다양한 환경에서 안전하고 확장성 높은 분산 네트워크 애플리케이션을 개발할 수 있도록 설계되었습니다.**
+## 🌟 주요 특징
+
+| 기능 | 설명 |
+|------|------|
+| **Gossipsub v1.2** | 메시지를 네트워크 전체에 브로드캐스트 (중복 제거·스팸 스코어링) |
+| **Kademlia DHT** | Seed 노드 한 곳만 알아도 전 피어 탐색·부트스트랩 |
+| **Relay v2 (HOP)** | 다중 NAT 환경 사용자를 위해 자동 릴레이 경로 제공 |
+| **AutoNAT + UPnP** | 퍼블릭 포트 가능 시 직접 연결, 불가 시 Relay 경유 결정 |
+| **MemoryTransport 테스트** | 실제 포트 없이 통합 테스트 가능 (CI 친화적) |
+
+---
+
+## 📂 프로젝트 구조
+
+```text
+xcomm/
+├── Cargo.toml          # 모든 feature 수동 지정
+├── src/
+│   └── bin/
+│       ├── chat.rs     # 일반 노드(클라이언트)
+│       └── seed.rs     # Seed + Relay 서버
+└── tests/
+    └── integration.rs  # in-memory 통합 테스트 2종
+```
+
+## 🚀 빠른 시작
+
+### 1. 필수 조건
+| 구분          | 요구 사항                                       |
+| -------------- | ---------------------------------------------- |
+| **Rust**       | 1.74 이상                                       |
+| **Seed 노드**  | 고정 IP 또는 DNS 2 대 이상, TCP/UDP 포트 **4001** 개방 |
+| **클라이언트** | 인터넷 연결만 있으면 됨 (NAT 환경 가능)          |
+
+### 2. 클론 & 빌드
+```bash
+git clone https://github.com/your-org/xcomm.git
+cd xcomm
+cargo build --release
+```
+
+### 3. Seed 노드 실행 (고정 서버 ≥ 2 대)
+
+```bash
+# 첫 실행: PeerId가 출력되고 새 키가 생성됩니다.
+RUST_LOG=info cargo run --bin seed --release
+# ▶ Listen on /ip4/203.0.113.10/tcp/4001/p2p/12D3KooWSeed1
+```
+같은 Peer ID로 항상 부팅하려면, hex-encoded protobuf 프라이빗 키를
+SEED_PRIVKEY 환경변수에 저장해 실행하세요.
+
+```bash
+export SEED_PRIVKEY=<hex-protobuf-private-key>
+RUST_LOG=info cargo run --bin seed --release
+```
+(Seed 주소를 DNS로 배포하고 싶다면 dnsaddr TXT 레코드에 위 Multiaddr를 등록합니다.)
+
+### 4. 클라이언트 노드 실행
+
+```bash
+# 방법 ①: Seed 주소를 CLI 인자로 직접 입력
+RUST_LOG=info cargo run --bin chat --release \
+  /ip4/203.0.113.10/tcp/4001/p2p/12D3KooWSeed1
+
+# 방법 ②: Seed 주소가 코드에 하드코딩되어 있다면
+RUST_LOG=info cargo run --bin chat --release
+```
+터미널에 입력하는 모든 줄이 실시간으로 전체에 전파됩니다.
+
+### 5. 테스트
+
+```bash
+cargo test --all
+
+```
+seed_and_chat_bootstrap	
+- Chat 노드가 Seed 노드에 다이얼하고 Kademlia 부트스트랩이 성공하는지 확인
+
+gossipsub_message_roundtrip	
+- Alice가 publish한 메시지를 Bob이 subscribe로 정상 수신하는지 검증
+
+테스트는 MemoryTransport 로 실행되므로 네트워크 포트가 필요 없습니다..
+
+
+### 6. 실행예시
+
+```bash
+🚀 Seed PeerId: 12D3KooWSeed1
+▶ Listen on /ip4/203.0.113.10/tcp/4001/p2p/12D3KooWSeed1
+
+📡 Local PeerId: 12D3KooWChatA
+▶ Listen: /ip4/192.168.0.11/tcp/49174
+🌐 External addr: /ip4/14.36.108.162/tcp/49174
+[12D3KooWChatB] 안녕하세요!
+
+```
+
+
+### 7. 주의사항
+
+- Seed 노드 꺼지면 새 참가자가 부트스트랩할 수 없습니다.
+최소 2 대를 24 H 유지하세요.
+
+- 라우터 UPnP가 꺼져 있거나 이중 NAT 환경이면 Relay 경유로만 연결됩니다.
+(자동으로 판단되므로 사용자가 신경 쓸 필요는 없습니다.)
+
+- Gossipsub 메시지 크기를 2 KB 이하로 제한해 두었습니다.
+필요 시 ConfigBuilder::max_transmit_size() 를 조정 바랍니다.

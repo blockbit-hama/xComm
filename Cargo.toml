@@ -1,0 +1,15 @@
+[package]
+name = "xComm"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+libp2p = { version = "0.55.0", features = [
+    "identify", "relay","ping","upnp","kad","autonat","tokio", "gossipsub",
+    "mdns", "noise", "macros", "tcp", "yamux", "quic"] }
+
+futures = "0.3"
+tokio   = { version = "1.37", features = ["full"] }
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["fmt", "env-filter"] }
+hex = "0.4.3"
